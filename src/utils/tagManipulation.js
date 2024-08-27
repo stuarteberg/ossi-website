@@ -33,54 +33,30 @@ export function getBackgroundColor(key) {
 // All returned keys and tags are lowercase
 // Keys are in the order set by validTagsList. Tags are in alphabetical order
 // Used to create the tag categories and tag option list in the filter menu
-export function extractUniqueTagsObject(contentCollectionObj) {
-  const uniqueTags = {};
-  //Ensure contentCollectionObj is always treated as an array, to handle cases where the length is 1
-  const normalizedCollection = Array.isArray(contentCollectionObj)
-    ? contentCollectionObj
-    : [contentCollectionObj];
+export function extractUniqueTagsObject(contentCollection) {
+    const uniqueTags = {};
+    contentCollection = Array.isArray(contentCollection) ? contentCollection : [contentCollection];
 
-  normalizedCollection.forEach((contentItem) => {
-    Object.entries(contentItem.data).forEach(([key, value]) => {
-      // tagKeyNames are the keys of validTagsList, imported at the top of the file
-      // If the current key is a value in tagKeyNames, we want to check if the key exists in uniqueTags
-      const isTagKey = tagKeyNames.some((tagKeyName) => tagKeyName === key);
-      if (isTagKey) {
-        //only process if the key has a value. User could have left it blank.
-        if (value) {
-          // process for if the value of key is an array (can also be a string - see else statement below)
-          if (Array.isArray(value)) {
-            value.forEach((tagValue) => {
-              // if the key doesn't exist in uniqueTags, add it and set it equal to the current tag value
-              if (!uniqueTags[key]) {
-                uniqueTags[key] = [tagValue];
-              } else {
-                // if the key does exist in uniqueTags, check whether the current tag value exists. If not, add the current tag value
-                if (!uniqueTags[key].includes(tagValue)) {
-                  uniqueTags[key].push(tagValue);
-                }
-              }
-            });
-          } else {
-            //process for if the value of key is a string - this is a valid tag input from users in the MD files.
-            //this is the same process as found in the forEach loop above
-            if (!uniqueTags[key]) {
-              uniqueTags[key] = [value];
-            } else {
-              if (!uniqueTags[key].includes(value)) {
-                uniqueTags[key].push(value);
-              }
+  	// For each key, determine the union of all unique values associated with it
+    // (across all content items), excluding keys which aren't in validTagsList.
+  	const validTagKeys = Object.keys(validTagsList);
+    contentCollection.forEach((contentItem) => {
+        Object.entries(contentItem.data).forEach(([key, value]) => {
+            if (!validTagKeys.includes(key) || !value) {
+                return;
             }
-          }
-        }
-      }
+            value = Array.isArray(value) ? value : [value];
+            value.forEach((tagValue) => {
+                (uniqueTags[key] ??= new Set()).add(tagValue);
+            });
+        });
     });
-  });
-  // Alphabetize the values in the array within each key
-  Object.keys(uniqueTags).forEach((key) => {
-    uniqueTags[key].sort();
-  });
-  return uniqueTags;
+
+    // Convert from Sets to sorted Arrays
+    Object.keys(uniqueTags).forEach((key) => {
+        uniqueTags[key] = Array.from(uniqueTags[key]).sort();
+    });
+    return uniqueTags;
 }
 
 // Takes in a single project object and returns an array of that project's tag values
